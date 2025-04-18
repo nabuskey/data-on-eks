@@ -1,0 +1,158 @@
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: shuffling-service
+spec:
+  amiFamily: AL2023
+  amiSelectorTerms:
+    - alias: al2023@latest
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 1024Gi
+        volumeType: gp3
+        deleteOnTermination: true
+        iops: 16000
+        throughput: 1000
+  instanceStorePolicy: RAID0
+  role: karpenter-spark-operator-doeks-20250224212353267300000030
+  securityGroupSelectorTerms:
+    - tags:
+        Name: spark-operator-doeks-node
+  subnetSelectorTerms:
+    - tags:
+        Name: spark-operator-doeks-private-us-west-2a
+  tags:
+    Name: shuffling-service
+    operator: karpenter
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 2
+    httpTokens: required
+
+---
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: shuffling-service-nvme
+spec:
+  amiFamily: AL2023
+  amiSelectorTerms:
+    - alias: al2023@latest
+  instanceStorePolicy: RAID0
+  role: karpenter-spark-operator-doeks-20250224212353267300000030
+  securityGroupSelectorTerms:
+    - tags:
+        Name: spark-operator-doeks-node
+  subnetSelectorTerms:
+    - tags:
+        Name: spark-operator-doeks-private-us-west-2a
+  tags:
+    Name: shuffling-service
+    operator: karpenter
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 2
+    httpTokens: required
+
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: shuffling-service
+spec:
+  template:
+    metadata:
+      labels:
+        NodeGroupType: shufflingService
+        type: karpenter
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: shuffling-service
+      terminationGracePeriod: 48h
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values:
+            - on-demand
+        - key: kubernetes.io/arch
+          operator: In
+          values:
+            - amd64
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values:
+            - 'r6i'
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values:
+            - 4xlarge
+        - key: karpenter.k8s.aws/instance-hypervisor
+          operator: In
+          values:
+            - nitro
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values:
+            - "2"
+      taints:
+        - key: shufflingService
+          effect: NoSchedule
+          value: "true"
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 5m
+
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: shuffling-service-nvme
+spec:
+  template:
+    metadata:
+      labels:
+        NodeGroupType: shufflingServiceNvme
+        type: karpenter
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: shuffling-service-nvme
+      terminationGracePeriod: 48h
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values:
+            - on-demand
+        - key: kubernetes.io/arch
+          operator: In
+          values:
+            - amd64
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values:
+            - 'r6id'
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values:
+            - 4xlarge
+        - key: karpenter.k8s.aws/instance-hypervisor
+          operator: In
+          values:
+            - nitro
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values:
+            - "2"
+      taints:
+        - key: shufflingService
+          effect: NoSchedule
+          value: "true"
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 5m
