@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: phoenix
+  namespace: phoenix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phoenix
+  serviceName: phoenix
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: "9090"
+        prometheus.io/scrape: "true"
+      labels:
+        app: phoenix
+    spec:
+      containers:
+      - name: phoenix
+        args:
+        - -m
+        - phoenix.server.main
+        - serve
+        command:
+        - python
+        env:
+        - name: PHOENIX_WORKING_DIR
+          value: /mnt/data
+        - name: PHOENIX_PORT
+          value: "6006"
+        # The version of phoenix you want should be used here
+        image: docker.io/arizephoenix/phoenix:version-10.0.4
+        ports:
+        - containerPort: 6006
+        - containerPort: 4317
+        - containerPort: 9090
+        volumeMounts:
+        - mountPath: /mnt/data
+          name: phoenix
+  volumeClaimTemplates:
+  - metadata:
+      name: phoenix
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 50Gi

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-qwen3-32b
+  namespace: inference
+spec:
+  selector:
+    app: qwen3-32b
+    service: inference
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+  type: ClusterIP
+  clusterIP: None

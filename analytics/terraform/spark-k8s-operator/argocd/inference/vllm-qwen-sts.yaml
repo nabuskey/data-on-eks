@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: vllm-qwen3-32b
+  namespace: inference
+  labels:
+    app: qwen3-32b
+    service: inference
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qwen3-32b
+      service: inference
+  serviceName: vllm-qwen3-32b
+  template:
+    metadata:
+      labels:
+        app: qwen3-32b
+        service: inference
+    spec:
+      volumes:
+        - name: cache-volume
+          persistentVolumeClaim:
+            claimName: vllm-qwen3-32b
+        # vLLM needs to access the host's shared memory for tensor parallel inference.
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: "2Gi"
+      nodeSelector:
+          NodeGroupType: g5-gpu-karpenter
+          type: karpenter
+          karpenter.k8s.aws/instance-size: "12xlarge"
+      tolerations:
+          - key: "nvidia.com/gpu"
+            operator: "Exists"
+            effect: "NoSchedule"
+      containers:
+        - name: qwen3-32b
+          image: docker.io/vllm/vllm-openai:v0.9.0
+          command: ["/bin/sh", "-c"]
+          args: [
+            "vllm serve Qwen/Qwen3-32B-AWQ --enable-auto-tool-choice --tool-call-parser hermes --tensor-parallel-size 4"
+          ]
+          env:
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token-secret
+                  key: token
+            - name: VLLM_USE_V1
+              value: "0"
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: "4"
+            requests:
+              cpu: "8"
+              memory: 24G
+              nvidia.com/gpu: "4"
+          volumeMounts:
+            - mountPath: /root/.cache/huggingface
+              name: cache-volume
+            - name: shm
+              mountPath: /dev/shm
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 300
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 300
+            periodSeconds: 5

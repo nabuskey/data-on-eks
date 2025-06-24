@@ -1,0 +1,16 @@
+# phoenix.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: phoenix
+  name: phoenix
+  namespace: phoenix
+spec:
+  ports:
+  - port: 443
+    protocol: TCP
+    targetPort: 6006
+  selector:
+    app: phoenix
+  clusterIP: None
