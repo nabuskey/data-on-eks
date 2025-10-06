@@ -102,19 +102,6 @@ module "eks" {
 #---------------------------------------------------------------
 # GP3 Encrypted Storage Class
 #---------------------------------------------------------------
-resource "kubernetes_annotations" "gp3_default" {
-  annotations = {
-    "storageclass.kubernetes.io/is-default-class" : "true"
-  }
-  api_version = "storage.k8s.io/v1"
-  kind        = "StorageClass"
-  metadata {
-    name = "gp3"
-  }
-  force = true
-
-  depends_on = [module.eks, kubernetes_storage_class.ebs_csi_encrypted_gp3_storage_class]
-}
 
 resource "kubernetes_storage_class" "ebs_csi_encrypted_gp3_storage_class" {
   metadata {
@@ -132,6 +119,7 @@ resource "kubernetes_storage_class" "ebs_csi_encrypted_gp3_storage_class" {
     fsType    = "xfs"
     encrypted = true
     type      = "gp3"
+    tagSpecification_1 = "DeploymentId=${random_string.deployment_id.result}"
   }
 }
 

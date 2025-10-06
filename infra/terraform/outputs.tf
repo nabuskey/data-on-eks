@@ -22,6 +22,10 @@ output "region" {
   value       = local.region
 }
 
+output "deployment_id" {
+  value = random_string.deployment_id.result
+}
+
 ################################################################################
 # Private Subnets
 ################################################################################

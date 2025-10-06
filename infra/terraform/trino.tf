@@ -215,7 +215,7 @@ resource "kubectl_manifest" "trino_keda_scaledobject" {
 #---------------------------------------------------------------
 output "trino_s3_bucket_id" {
   description = "Trino S3 data bucket ID"
-  value       = var.enable_trino ? module.trino_s3_bucket.s3_bucket_id : null
+  value       = module.trino_s3_bucket.s3_bucket_id
 }
 
 output "trino_exchange_bucket_id" {

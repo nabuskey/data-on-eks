@@ -6,10 +6,42 @@ REGION="region"
 # Check if blueprint.tfvars exists
 if [ -f "../blueprint.tfvars" ]; then
   TERRAFORM_COMMAND="$TERRAFORM_COMMAND -var-file=../blueprint.tfvars"
-  CLUSTERNAME="$(echo "var.name" | terraform console -var-file=../blueprint.tfvars | tr -d '"')"
-  REGION="$(echo "var.region" | terraform console -var-file=../blueprint.tfvars | tr -d '"')"
+  CLUSTERNAME="$(echo 'var.name' | terraform console -var-file=../blueprint.tfvars | tr -d '"')"
+  REGION="$(echo 'var.region' | terraform console -var-file=../blueprint.tfvars | tr -d '"')"
 fi
 echo "Destroying Terraform $CLUSTERNAME"
+
+# Get the deployment_id from terraform output
+DEPLOYMENT_ID=$(terraform output -raw deployment_id)
+
+if [ -z "$DEPLOYMENT_ID" ]; then
+  echo "Could not find deployment_id in terraform output. Skipping PVC/EBS cleanup."
+else
+  echo "Cleaning up PVCs and EBS volumes for deployment_id: $DEPLOYMENT_ID"
+
+  # Get the list of EBS volumes with the deployment_id tag
+  VOLUME_IDS=$(aws ec2 describe-volumes --filters "Name=tag:DeploymentId,Values=$DEPLOYMENT_ID" --query "Volumes[].VolumeId" --output text)
+
+  if [ -n "$VOLUME_IDS" ]; then
+    for volume_id in $VOLUME_IDS; do
+      # Get the PVC name from the volume tags
+      PVC_NAME=$(aws ec2 describe-volumes --volume-ids "$volume_id" --query "Volumes[0].Tags[?Key=='kubernetes.io/created-for/pvc/name'].Value" --output text)
+      PVC_NAMESPACE=$(aws ec2 describe-volumes --volume-ids "$volume_id" --query "Volumes[0].Tags[?Key=='kubernetes.io/created-for/pvc/namespace'].Value" --output text)
+
+      if [ -n "$PVC_NAME" ] && [ -n "$PVC_NAMESPACE" ]; then
+        echo "Deleting PVC: $PVC_NAME in namespace: $PVC_NAMESPACE"
+        kubectl delete pvc "$PVC_NAME" -n "$PVC_NAMESPACE"
+      fi
+
+      echo "Deleting EBS volume: $volume_id"
+      aws ec2 delete-volume --volume-id "$volume_id"
+    done
+  else
+    echo "No EBS volumes found with deployment_id: $DEPLOYMENT_ID"
+  fi
+fi
+
+
 echo "Destroying RayService..."
 
 # Delete the Ingress/SVC before removing the addons

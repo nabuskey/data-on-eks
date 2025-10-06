@@ -21,8 +21,9 @@ locals {
   partition  = data.aws_partition.current.partition
   account_id = data.aws_caller_identity.current.account_id
   tags = merge(var.tags, {
-    Blueprint  = local.name
-    GithubRepo = "github.com/awslabs/data-on-eks"
+    Blueprint     = local.name
+    GithubRepo    = "github.com/awslabs/data-on-eks"
+    DeploymentId  = random_string.deployment_id.result
   })
 
   base_addons = {
@@ -171,4 +172,10 @@ provider "kubectl" {
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
   token                  = data.aws_eks_cluster_auth.this.token
   load_config_file       = false
+}
+
+resource "random_string" "deployment_id" {
+  length  = 8
+  special = false
+  upper   = false
 }
