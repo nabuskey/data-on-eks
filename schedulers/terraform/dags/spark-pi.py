@@ -19,16 +19,15 @@ with DAG(
         task_id="pyspark_pi_submit",
         namespace="spark-team-a",
         application_file="spark-pi.yaml",
-        do_xcom_push=True,
         dag=dag,
         get_logs=False,
     )
+    # xcom in SparkKubernetesOperator is broken as of 3.1.0: https://github.com/apache/airflow/pull/52051
+    # t2 = SparkKubernetesSensor(
+    #     task_id="pyspark_pi_monitor",
+    #     namespace="spark-team-a",
+    #     application_name="{{ task_instance.xcom_pull(task_ids='pyspark_pi_submit')['metadata']['name'] }}",
+    #     dag=dag,
+    # )
 
-    t2 = SparkKubernetesSensor(  
-        task_id="pyspark_pi_monitor",
-        namespace="spark-team-a",
-        application_name="{{ task_instance.xcom_pull(task_ids='pyspark_pi_submit')['metadata']['name'] }}",
-        dag=dag,
-    )
-
-    t1 >> t2
+    t1
