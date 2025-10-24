@@ -21,6 +21,7 @@ with DAG(
         application_file="spark-pi.yaml",
         do_xcom_push=True,
         dag=dag,
+        get_logs=False,
     )
 
     t2 = SparkKubernetesSensor(  
