@@ -3,12 +3,12 @@ from airflow import DAG
 from airflow.exceptions import AirflowException
 from airflow.utils import yaml
 import os
-from stackable.spark_kubernetes_sensor import SparkKubernetesSensor
-from stackable.spark_kubernetes_operator import SparkKubernetesOperator
+from airflow.providers.cncf.kubernetes.operators.spark_kubernetes import SparkKubernetesOperator
+from airflow.providers.cncf.kubernetes.sensors.spark_kubernetes import SparkKubernetesSensor
 
 with DAG(  
     dag_id="spark_pi",
-    start_date=datetime.datetime.now(),
+    start_date=datetime.now(),
     description="submit spark-pi as sparkApplication on kubernetes",
     catchup=False,
     dagrun_timeout=timedelta(minutes=10),
