@@ -8,7 +8,7 @@ from airflow.providers.cncf.kubernetes.sensors.spark_kubernetes import SparkKube
 
 with DAG(  
     dag_id="spark_pi",
-    start_date=datetime.now(),
+    start_date=datetime(2025, 10, 24),
     description="submit spark-pi as sparkApplication on kubernetes",
     catchup=False,
     dagrun_timeout=timedelta(minutes=10),
