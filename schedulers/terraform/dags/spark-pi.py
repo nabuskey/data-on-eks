@@ -13,12 +13,13 @@ with DAG(
     catchup=False,
     dagrun_timeout=timedelta(minutes=10),
     schedule=timedelta(days=1),
-    tags=["example", "doeks"],
+    tags=["example", "data-on-eks"],
 ) as dag:
     t1 = SparkKubernetesOperator(  
         task_id="pyspark_pi_submit",
         namespace="spark-team-a",
         application_file="spark-pi.yaml",
+        do_xcom_push=True,
         dag=dag,
         get_logs=False,
     )
