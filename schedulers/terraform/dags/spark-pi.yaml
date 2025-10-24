@@ -29,6 +29,14 @@ spec:
       allowPrivilegeEscalation: false
       seccompProfile:
         type: RuntimeDefault
+    sidecars:
+      - name: airflow-xcom-sidecar
+        image: alpine
+        command: ["sh", "-c", 'trap "exit 0" INT; while true; do sleep 1; done;']
+        resources:
+          requests:
+            cpu: "1m"
+            memory: "10Mi"
   executor:
     labels:
       version: 4.0.0
