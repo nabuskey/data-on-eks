@@ -82,7 +82,7 @@ spark-team-a            Active   5m51s
 default                 Active   25m
 karpenter               Active   21m
 kube-node-lease         Active   25m
-kube-prometheus-stack   Active   8m5s
+monitoring              Active   8m5s
 kube-public             Active   25m
 kube-system             Active   25m
 spark-operator          Active   5m43s

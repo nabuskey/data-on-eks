@@ -218,7 +218,7 @@ The load test runs for approximately 1 hour. During this time, you can monitor t
 Run the following command to create a local port-forward, making Grafana accessible from your local machine:
 
 ```sh
-kubectl port-forward svc/kube-prometheus-stack-grafana 3000:80 -n kube-prometheus-stack
+kubectl port-forward svc/kube-prometheus-stack-grafana 3000:80 -n monitoring
 ```
 This maps port 3000 on your local system to Grafana's service inside the cluster.
 
