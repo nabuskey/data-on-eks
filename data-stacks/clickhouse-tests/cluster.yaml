@@ -1,0 +1,64 @@
+apiVersion: clickhouse.com/v1alpha1
+kind: KeeperCluster
+metadata:
+  name: test
+  namespace: clickhouse-tests
+spec:
+  replicas: 3
+  settings:
+    logger:
+      level: information
+    extraConfig:
+      logger:
+        formatting:
+          type: json
+  dataVolumeClaimSpec:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 10Gi
+---
+apiVersion: clickhouse.com/v1alpha1
+kind: ClickHouseCluster
+metadata:
+  name: tests
+  namespace: clickhouse-tests
+spec:
+  settings:
+    logger:
+      level: information
+    extraConfig:
+      logger:
+        formatting:
+          type: json
+    defaultUserPassword:
+      secret:
+        name: clickhouse-password
+        key: password
+  shards: 3
+  replicas: 3
+  keeperClusterRef:
+    name: test
+  dataVolumeClaimSpec:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 500Gi
+  podTemplate:
+    nodeSelector:
+      karpenter.k8s.aws/instance-family: m6g
+      karpenter.k8s.aws/instance-size: 8xlarge
+      karpenter.sh/capacity-type: on-demand
+  containerTemplate:
+    image:
+      repository: clickhouse/clickhouse-server
+      tag: "26.3"
+    resources:
+      requests:
+        cpu: "30"
+        memory: 110Gi
+      limits:
+        cpu: "30"
+        memory: 110Gi
