@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sr-tiering
+  namespace: starrocks
+spec:
+  # Validation cadence: every 5 minutes. Production: daily, e.g. "0 2 * * *".
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        metadata:
+          annotations:
+            karpenter.sh/do-not-disrupt: "true"
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: tiering
+              image: mysql:8.0
+              env:
+                # Validation: move rows older than 5 minutes.
+                # Production: set to "7 DAY".
+                - name: AGE
+                  value: "5 MINUTE"
+                - name: FE_HOST
+                  value: "sr-bench-fe-service"
+              command: ["/bin/bash", "-lc"]
+              args:
+                - |
+                  set -euo pipefail
+                  # One cutoff for both statements (from StarRocks now(), so the
+                  # timezone matches ingest_time). Keeps move and delete consistent.
+                  CUT=$(mysql -h"$FE_HOST" -P9030 -uroot -N -e "SELECT date_sub(now(), INTERVAL ${AGE})")
+                  echo "cutoff=$CUT"
+                  mysql -h"$FE_HOST" -P9030 -uroot -e "
+                    INSERT INTO iceberg_glue.sr_ch_bench.events_cold
+                    SELECT ingest_time, id, name, active, score,
+                           CAST(tags AS STRING), CAST(meta AS STRING), note, filler
+                    FROM bench.events
+                    WHERE ingest_time < '$CUT';
+                    DELETE FROM bench.events WHERE ingest_time < '$CUT';"
+                  echo "tiering complete for cutoff $CUT"

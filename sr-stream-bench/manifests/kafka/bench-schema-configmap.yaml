@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bench-schema
+  namespace: kafka
+data:
+  # This is the sample record. The program reads the field types from it.
+  # Change this file to change the record shape. No image rebuild is needed.
+  sample.json: |
+    {
+      "id": 12345,
+      "name": "example",
+      "active": true,
+      "score": 12.5,
+      "tags": ["a", "b", "c"],
+      "meta": {
+        "region": "us-west-2",
+        "count": 7,
+        "ratio": 0.1
+      },
+      "note": null
+    }

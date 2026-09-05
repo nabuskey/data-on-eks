@@ -1,0 +1,15 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: bench1
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: data-on-eks
+spec:
+  # One partition. This measures the write rate of a single partition.
+  partitions: 1
+  # Replication factor 3 matches production durability.
+  replicas: 3
+  config:
+    retention.ms: 3600000
+    max.message.bytes: 10485760

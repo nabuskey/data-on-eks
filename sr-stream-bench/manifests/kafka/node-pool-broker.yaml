@@ -1,0 +1,60 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: broker
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: data-on-eks
+spec:
+  replicas: 21
+  roles:
+    - broker
+  # Local-NVMe storage: r8gd instance-store, RAID0-mounted by Karpenter
+  # (instanceStorePolicy: RAID0) and used for pod ephemeral storage. Ephemeral =
+  # data lost on pod move; acceptable for this RF1 throwaway benchmark. Removes
+  # the EBS bandwidth cap entirely.
+  storage:
+    type: ephemeral
+    sizeLimit: 1500Gi
+  # Broker-scoped scheduling: pin brokers to r8gd.12xlarge (local NVMe, no EBS
+  # bandwidth cap; sustained 22.5 Gbps network). Controllers keep the shared
+  # spec.kafka.template (instance-family r8g).
+  template:
+    pod:
+      metadata:
+        annotations:
+          karpenter.sh/do-not-disrupt: "true"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node.kubernetes.io/instance-type
+                    operator: In
+                    values:
+                      - r8gd.12xlarge
+                      - r8gd.16xlarge
+                      - r7gd.12xlarge
+                      - r7gd.16xlarge
+                  - key: karpenter.sh/capacity-type
+                    operator: In
+                    values:
+                      - on-demand
+                  - key: topology.kubernetes.io/zone
+                    operator: In
+                    values:
+                      - us-west-2c
+                  - key: karpenter.sh/nodepool
+                    operator: In
+                    values:
+                      - memory-optimized-graviton
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: strimzi.io/pool-name
+                    operator: In
+                    values:
+                      - broker
+                      - controller
+              topologyKey: kubernetes.io/hostname

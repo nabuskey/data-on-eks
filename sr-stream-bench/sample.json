@@ -1,0 +1,13 @@
+{
+  "id": 12345,
+  "name": "example",
+  "active": true,
+  "score": 12.5,
+  "tags": ["a", "b", "c"],
+  "meta": {
+    "region": "us-west-2",
+    "count": 7,
+    "ratio": 0.1
+  },
+  "note": null
+}

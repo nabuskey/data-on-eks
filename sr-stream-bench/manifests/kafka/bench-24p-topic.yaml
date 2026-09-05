@@ -1,0 +1,14 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: bench24
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: data-on-eks
+spec:
+  # 24 partitions, 8 per broker. This spreads leaders evenly across 3 brokers.
+  partitions: 24
+  replicas: 3
+  config:
+    retention.ms: 3600000
+    max.message.bytes: 10485760

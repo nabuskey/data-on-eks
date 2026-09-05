@@ -1,0 +1,53 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "StarRocksDataBucketAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:List*",
+        "s3:Get*",
+        "s3:*Object*"
+      ],
+      "Resource": [
+        "arn:aws:s3:::sr-ch-bench-starrocks-data-c93eff82b8785d5a27e449d2a4/*",
+        "arn:aws:s3:::sr-ch-bench-starrocks-data-c93eff82b8785d5a27e449d2a4"
+      ]
+    },
+    {
+      "Sid": "StarRocksGeneralS3Access",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListAllMyBuckets",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "StarRocksGlueIceberg",
+      "Effect": "Allow",
+      "Action": [
+        "glue:GetDatabase",
+        "glue:GetDatabases",
+        "glue:CreateTable",
+        "glue:UpdateTable",
+        "glue:DeleteTable",
+        "glue:GetTable",
+        "glue:GetTables",
+        "glue:BatchCreatePartition",
+        "glue:CreatePartition",
+        "glue:UpdatePartition",
+        "glue:DeletePartition",
+        "glue:BatchDeletePartition",
+        "glue:GetPartition",
+        "glue:GetPartitions",
+        "glue:BatchGetPartition"
+      ],
+      "Resource": [
+        "arn:aws:glue:us-west-2:464566837657:catalog",
+        "arn:aws:glue:us-west-2:464566837657:database/sr_ch_bench",
+        "arn:aws:glue:us-west-2:464566837657:table/sr_ch_bench/*"
+      ]
+    }
+  ]
+}

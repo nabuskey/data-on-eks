@@ -1,0 +1,88 @@
+apiVersion: starrocks.com/v1
+kind: StarRocksCluster
+metadata:
+  name: sr-bench
+  namespace: starrocks
+spec:
+  # Shared-nothing: FE (metadata + query) and BE (local storage + compute).
+  # External Iceberg/Glue access does not need shared-data mode.
+  # Each pod is pinned to its own r8g.4xlarge node (dedicated node per pod)
+  # via an instance-type nodeSelector, anti-affinity, and node-filling
+  # resource requests. So two StarRocks pods cannot share a node.
+  starRocksFeSpec:
+    image: starrocks/fe-ubuntu:4.0.14
+    configMapInfo:
+      configMapName: fe-conf
+      resolveKey: fe.conf
+    replicas: 3
+    serviceAccount: starrocks-sa
+    annotations:
+      karpenter.sh/do-not-disrupt: "true"
+    nodeSelector:
+      node.kubernetes.io/instance-type: r8g.4xlarge
+      karpenter.sh/capacity-type: on-demand
+      topology.kubernetes.io/zone: us-west-2c
+      karpenter.sh/nodepool: memory-optimized-graviton
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values: ["fe", "be"]
+            topologyKey: kubernetes.io/hostname
+    requests:
+      cpu: 14
+      memory: 100Gi
+    limits:
+      cpu: 16
+      memory: 118Gi
+    storageVolumes:
+      - name: fe-meta
+        storageClassName: gp3
+        storageSize: 50Gi
+        mountPath: /opt/starrocks/fe/meta
+      - name: fe-log
+        storageClassName: gp3
+        storageSize: 20Gi
+        mountPath: /opt/starrocks/fe/log
+  starRocksBeSpec:
+    image: starrocks/be-ubuntu:4.0.14
+    configMapInfo:
+      configMapName: be-conf
+      resolveKey: be.conf
+    replicas: 24
+    serviceAccount: starrocks-sa
+    annotations:
+      karpenter.sh/do-not-disrupt: "true"
+    nodeSelector:
+      node.kubernetes.io/instance-type: r8gd.4xlarge
+      karpenter.sh/capacity-type: on-demand
+      topology.kubernetes.io/zone: us-west-2c
+      karpenter.sh/nodepool: memory-optimized-graviton
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values: ["fe", "be"]
+            topologyKey: kubernetes.io/hostname
+    requests:
+      cpu: 14
+      memory: 100Gi
+    limits:
+      cpu: 16
+      memory: 118Gi
+    storageVolumes:
+      - name: be-storage
+        hostPath:
+          path: /mnt/k8s-disks/0/sr-be-storage
+          type: DirectoryOrCreate
+        mountPath: /opt/starrocks/be/storage
+      - name: be-log
+        storageClassName: gp3
+        storageSize: 20Gi
+        mountPath: /opt/starrocks/be/log

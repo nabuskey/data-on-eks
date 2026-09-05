@@ -1,0 +1,18 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: bench
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: data-on-eks
+spec:
+  # Raised to 64 partitions so many producer goroutines have parallel write
+  # paths. Kafka allows a partition increase, not a decrease.
+  partitions: 64
+  # The cluster sets default.replication.factor to 3. Match it here.
+  replicas: 3
+  config:
+    # Keep the retention short. Benchmark data has no value after the run.
+    retention.ms: 3600000
+    # Allow large batches. Our records are 10 KB to 100 KB.
+    max.message.bytes: 10485760

@@ -1,0 +1,52 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: sr-connect
+  namespace: kafka
+  annotations:
+    # Let KafkaConnector CRs manage connectors on this cluster.
+    strimzi.io/use-connector-resources: "true"
+spec:
+  version: 3.9.0
+  replicas: 20
+  jvmOptions:
+    "-Xms": "8g"
+    "-Xmx": "8g"
+  bootstrapServers: data-on-eks-kafka-bootstrap.kafka.svc:9092
+  template:
+    pod:
+      metadata:
+        annotations:
+          karpenter.sh/do-not-disrupt: "true"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: karpenter.sh/capacity-type
+                    operator: In
+                    values: ["on-demand"]
+                  - key: topology.kubernetes.io/zone
+                    operator: In
+                    values: ["us-west-2c"]
+  # Built by kafka-connect/Dockerfile (Strimzi base + StarRocks connector JAR).
+  image: public.ecr.aws/data-on-eks/test@sha256:b418860e86278c5dcc795cb9f713047b6e433f26a387b603eba7325ecd5ad630
+  config:
+    group.id: sr-connect
+    offset.storage.topic: sr-connect-offsets
+    config.storage.topic: sr-connect-configs
+    status.storage.topic: sr-connect-status
+    config.storage.replication.factor: 1
+    offset.storage.replication.factor: 1
+    status.storage.replication.factor: 1
+    key.converter: org.apache.kafka.connect.storage.StringConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    key.converter.schemas.enable: false
+    value.converter.schemas.enable: false
+  resources:
+    requests:
+      cpu: "6"
+      memory: 8Gi
+    limits:
+      cpu: "8"
+      memory: 16Gi

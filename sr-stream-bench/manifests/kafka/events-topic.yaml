@@ -1,0 +1,15 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: events
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: data-on-eks
+spec:
+  # Persistent topic for the StarRocks Routine Load pipeline.
+  # RF1 for the benchmark (no replication). 192 partitions for 12 BEs x 16 tasks headroom.
+  partitions: 768
+  replicas: 1
+  config:
+    retention.ms: 3600000
+    max.message.bytes: 10485760

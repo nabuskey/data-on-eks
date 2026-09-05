@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: events-producer
+  namespace: kafka
+spec:
+  replicas: 96
+  selector:
+    matchLabels:
+      app: events-producer
+  template:
+    metadata:
+      labels:
+        app: events-producer
+      annotations:
+        karpenter.sh/do-not-disrupt: "true"
+    spec:
+      nodeSelector:
+        karpenter.sh/capacity-type: on-demand
+        topology.kubernetes.io/zone: us-west-2c
+      containers:
+        - name: producer
+          image: public.ecr.aws/data-on-eks/test@sha256:b8cd45e74be384c8b50996b4e1eb11ab9e4e25616206f5379060a483e9b3cd29
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-cpus=4"
+            - "-goroutines=128"
+            - "-topic-file=events,/schema/sample.json"
+            - "-kafka-url=data-on-eks-kafka-bootstrap.kafka.svc:9092"
+            - "-min-size=10240"
+            - "-max-size=102400"
+            - "-reuse=false"            # varied data, realistic
+            - "-compressibility=4"      # model real text/JSON ~4:1
+            - "-duration=0"             # run continuously
+            - "-acks=1"
+            - "-compression=lz4"
+          resources:
+            requests:
+              cpu: "4"
+              memory: "1Gi"
+            limits:
+              cpu: "4"
+              memory: "2Gi"
+          volumeMounts:
+            - name: schema
+              mountPath: /schema
+              readOnly: true
+      volumes:
+        - name: schema
+          configMap:
+            name: bench-schema

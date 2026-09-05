@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-bench-producer
+  namespace: kafka
+spec:
+  # Do not retry on failure during a benchmark. A retry would confuse the
+  # numbers.
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: kafka-bench-producer
+      annotations:
+        # Stop Karpenter from disrupting the node during a benchmark run.
+        karpenter.sh/do-not-disrupt: "true"
+    spec:
+      restartPolicy: Never
+      affinity:
+        # Keep producers off broker and controller nodes for a clean
+        # measurement. They must not compete with brokers for CPU or network.
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: strimzi.io/pool-name
+                    operator: In
+                    values: ["broker", "controller"]
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: producer
+          image: public.ecr.aws/data-on-eks/test@sha256:b8cd45e74be384c8b50996b4e1eb11ab9e4e25616206f5379060a483e9b3cd29
+          # The image is pinned to a digest. So the pod always runs the same
+          # build. IfNotPresent is safe because a digest never changes.
+          imagePullPolicy: IfNotPresent
+          args:
+            # Use one core and one goroutine. This measures one core first.
+            - "-cpus=1"
+            - "-goroutines=1"
+            - "-topic-file=bench,/schema/sample.json"
+            - "-kafka-url=data-on-eks-kafka-bootstrap.kafka.svc:9092"
+            - "-min-size=10240"
+            - "-max-size=102400"
+            - "-reuse=true"
+            # Run for a fixed time. Then the Job completes and you read the
+            # rate from Prometheus. Set 0 to run until you delete the Job.
+            - "-duration=60s"
+            - "-acks=1"
+            - "-compression=lz4"
+          resources:
+            # Match the CPU limit to the -cpus flag for a clean per-core test.
+            requests:
+              cpu: "1"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          volumeMounts:
+            - name: schema
+              mountPath: /schema
+              readOnly: true
+      volumes:
+        - name: schema
+          configMap:
+            name: bench-schema

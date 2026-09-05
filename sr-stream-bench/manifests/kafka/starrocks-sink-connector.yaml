@@ -1,0 +1,34 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: starrocks-sink
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: sr-connect
+spec:
+  class: com.starrocks.connector.kafka.StarRocksSinkConnector
+  # One task per partition (events has 48). Parallelism is decoupled from BE
+  # count here — this is the key difference vs Routine Load.
+  tasksMax: 160
+  config:
+    topics: events
+    # Cross-namespace DNS: StarRocks FE is in the 'starrocks' namespace.
+    # Stream Load hits FE 8030 then redirects to a BE on 8040 — Connect workers
+    # must be able to reach BE pods on 8040 too (pod-to-pod, cross-namespace).
+    starrocks.http.url: "sr-bench-fe-service.starrocks.svc.cluster.local:8030"
+    starrocks.database.name: bench
+    starrocks.topic2table.map: "events:events"
+    starrocks.username: root
+    starrocks.password: ""
+    key.converter: org.apache.kafka.connect.storage.StringConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: "false"
+    # Load into the same bench.events table as Routine Load. Map the JSON field
+    # _filler -> column filler (ingest_time takes its CURRENT_TIMESTAMP default).
+    sink.properties.format: json
+    sink.properties.strip_outer_array: "true"
+    sink.properties.jsonpaths: "[\"$.id\",\"$.name\",\"$.active\",\"$.score\",\"$.tags\",\"$.meta\",\"$.note\",\"$._filler\"]"
+    sink.properties.columns: "id,name,active,score,tags,meta,note,filler"
+    # Heap-safe batch, well under the 100MB JSON limit. No ignore_json_size.
+    bufferflush.maxbytes: "67108864"
+    bufferflush.intervalms: "2000"
